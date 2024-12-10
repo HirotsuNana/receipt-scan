@@ -20,15 +20,20 @@ dependencies {
     implementation 'io.quarkus:quarkus-resteasy-multipart:3.17.3'
     implementation 'io.quarkus:quarkus-vertx-web:3.0.0.Beta1'
     implementation 'io.quarkus:quarkus-smallrye-openapi'
-    implementation 'com.google.cloud:google-cloud-vision:3.4.0'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+
+    // grpc
+    implementation 'io.quarkus:quarkus-grpc'
 
     // cloud storage
     implementation 'com.google.cloud:google-cloud-storage:2.45.0'
 
     // firestore
     implementation 'com.google.cloud:google-cloud-firestore:3.4.0'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+
+    // vision AI
+    implementation 'com.google.cloud:google-cloud-vision:3.0.2'
+    implementation platform("com.google.cloud:libraries-bom:26.51.0")
+    implementation 'com.google.protobuf:protobuf-java:3.21.12'
 
     // test
     testImplementation 'io.quarkus:quarkus-junit5'
