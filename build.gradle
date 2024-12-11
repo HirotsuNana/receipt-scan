@@ -30,6 +30,9 @@ dependencies {
     // firestore
     implementation 'com.google.cloud:google-cloud-firestore:3.4.0'
 
+    // firebase
+    implementation 'com.google.firebase:firebase-admin:9.0.0'
+
     // vision AI
     implementation 'com.google.cloud:google-cloud-vision:3.0.2'
     implementation platform("com.google.cloud:libraries-bom:26.51.0")

@@ -17,7 +17,7 @@ class ReceiptService(
 
         // Vision APIを使って画像からテキストを抽出
         val extractedText = try {
-            visionService.analyzeImage(imagePath, imageName)
+            visionService.analyzeImage(imagePath)
         } catch (e: Exception) {
             Log.error("Failed to analyze image: ${e.message}", e)
             throw IllegalArgumentException("Failed to analyze the receipt image.")
