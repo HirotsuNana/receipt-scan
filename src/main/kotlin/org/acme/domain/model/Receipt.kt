@@ -9,4 +9,10 @@ data class Receipt(
     val storeName: String,
     val totalPrice: Double,
     val date: String
-)
+) {
+    init {
+        require(storeName.isNotBlank()) { "Store name cannot be blank." }
+        require(totalPrice >= 0) { "Total price cannot be negative." }
+        require(Regex("\\d{4}-\\d{2}-\\d{2}").matches(date)) { "Invalid date format: $date" }
+    }
+}

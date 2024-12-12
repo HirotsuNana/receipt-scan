@@ -1,14 +1,30 @@
-/*
-ReceiptRepositoryインターフェースを使って、Firestoreなどのストレージに関する詳細を隠蔽しています。
-これにより、ストレージの実装を変更する際にも、他のコードへの影響を最小限に抑えることができます。
-（例えば、FirestoreからBigQueryに変更する場合でも、インターフェースは変わりません）
-*/
-
 package org.acme.domain.repository
 
+import com.google.cloud.firestore.Firestore
+import com.google.cloud.firestore.FirestoreOptions
+import com.google.cloud.firestore.SetOptions
+import jakarta.enterprise.context.ApplicationScoped
+import jakarta.enterprise.inject.Produces
 import org.acme.domain.model.Receipt
 
-interface ReceiptRepository {
-    fun save(receipt: Receipt)
-    // 他に必要なメソッドを追加（例えば、検索や削除など）
+@ApplicationScoped
+class ReceiptRepository {
+
+    @Produces
+    fun firestore(): Firestore {
+        return FirestoreOptions.getDefaultInstance().service
+    }
+
+    fun save(receipt: Receipt) {
+        val firestore = firestore()
+        val collectionRef = firestore.collection("receipts")
+        val documentRef = collectionRef.document()  // 自動的に新しいIDを生成
+        val document = mapOf(
+            "storeName" to receipt.storeName,
+            "totalPrice" to receipt.totalPrice,
+            "date" to receipt.date
+        )
+
+        documentRef.set(document)
+    }
 }
