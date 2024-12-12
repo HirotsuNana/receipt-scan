@@ -69,11 +69,16 @@ class ReceiptScanResource {
             if (originalImageBytes.isEmpty) {
                 throw RuntimeException("Failed to read the image data.")
             }
+            Log.info("Original image size: ${originalImageBytes.size()} bytes")
 
+            // リサイズ処理をここで行う
             val resizedImageBytes = resizeImage(originalImageBytes)
+            Log.info("Resized image size: ${resizedImageBytes.size()} bytes")
 
             val image = Image.newBuilder().setContent(resizedImageBytes).build()
             val feature = Feature.newBuilder().setType(Feature.Type.DOCUMENT_TEXT_DETECTION).build()
+
+            // Requestで画像と機能が正しく設定されているか確認
             val request = AnnotateImageRequest.newBuilder()
                 .addFeatures(feature)
                 .setImage(image)
@@ -97,40 +102,43 @@ class ReceiptScanResource {
 
         CompletableFuture.runAsync {
             try {
+                // 非同期処理を待機するように変更
                 collectionRef.add(document).get()
                 Log.info("Data saved to Firestore successfully.")
             } catch (e: Exception) {
                 Log.error("Error saving data to Firestore: ${e.message}")
                 throw RuntimeException("Failed to save data to Firestore: ${e.message}")
             }
-        }
+        }.join()
     }
 
-    private fun resizeImage(imageBytes: ByteString): ByteString {
+    private fun resizeImage(originalImageBytes: ByteString): ByteString {
         try {
-            // ByteStringをBufferedImageに変換
-            val bufferedImage = ImageIO.read(ByteArrayInputStream(imageBytes.toByteArray()))
+            val image = ImageIO.read(ByteArrayInputStream(originalImageBytes.toByteArray()))
+            if (image == null) {
+                throw RuntimeException("Failed to decode image.")
+            }
 
-            // 画像のサイズを取得
-            val originalWidth = bufferedImage.width
-            val originalHeight = bufferedImage.height
+            val maxDimension = 1024
+            val scale = maxOf(image.width, image.height) / maxDimension.toFloat()
+            val newWidth = (image.width / scale).toInt()
+            val newHeight = (image.height / scale).toInt()
 
-            // 新しいサイズを計算 (ここでは50%に縮小)
-            val newWidth = (originalWidth * 0.5).toInt()
-            val newHeight = (originalHeight * 0.5).toInt()
+            val resizedImage = BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB)
+            val graphics = resizedImage.createGraphics()
+            graphics.drawImage(image, 0, 0, newWidth, newHeight, null)
+            graphics.dispose()
 
-            // 画像をリサイズ
-            val resizedImage = BufferedImage(newWidth, newHeight, bufferedImage.type)
-            val graphics2D = resizedImage.graphics
-            graphics2D.drawImage(bufferedImage, 0, 0, newWidth, newHeight, null)
-            graphics2D.dispose()
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            ImageIO.write(resizedImage, "PNG", byteArrayOutputStream)
+            val resizedImageBytes = ByteString.copyFrom(byteArrayOutputStream.toByteArray())
 
-            // リサイズした画像をByteArrayOutputStreamに書き込む
-            val baos = ByteArrayOutputStream()
-            ImageIO.write(resizedImage, "jpg", baos) // JPEG形式で保存 (品質調整も可能)
-            return ByteString.copyFrom(baos.toByteArray())
-        } catch (e: IOException) {
-            throw RuntimeException("Error resizing image: ${e.message}", e)
+            // デバッグログを追加
+            Log.info("Resized image size: ${resizedImageBytes.size()} bytes")
+            return resizedImageBytes
+        } catch (e: Exception) {
+            Log.error("Error resizing image: ${e.message}")
+            throw RuntimeException("Failed to resize image: ${e.message}")
         }
     }
 }

@@ -4,7 +4,7 @@ import io.quarkus.logging.Log
 import jakarta.enterprise.context.ApplicationScoped
 import org.acme.domain.model.Receipt
 import org.acme.domain.repository.ReceiptRepository
-import org.acme.infrastructure.vision.VisionService
+import org.acme.grpc.vision.VisionService
 import java.util.regex.Pattern
 
 @ApplicationScoped

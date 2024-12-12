@@ -33,7 +33,9 @@ dependencies {
     // vision AI
     implementation 'com.google.cloud:google-cloud-vision:3.0.2'
     implementation platform("com.google.cloud:libraries-bom:26.51.0")
-    implementation 'com.google.protobuf:protobuf-java:3.21.12'
+    implementation 'com.google.protobuf:protobuf-java:4.28.2'
+    implementation 'io.grpc:grpc-okhttp:1.57.2'
+    implementation 'io.grpc:grpc-netty-shaded:1.57.2'
 
     // test
     testImplementation 'io.quarkus:quarkus-junit5'
