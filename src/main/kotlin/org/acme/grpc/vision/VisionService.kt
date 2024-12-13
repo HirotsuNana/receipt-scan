@@ -25,21 +25,24 @@ class VisionService {
             .setImage(image)
             .build()
 
-        val response = client.batchAnnotateImages(
-            BatchAnnotateImagesRequest.newBuilder().addRequests(request).build()
-        )
+        // try-with-resources to ensure the client is closed automatically
+        ImageAnnotatorClient.create().use { client ->
+            val response = client.batchAnnotateImages(
+                BatchAnnotateImagesRequest.newBuilder().addRequests(request).build()
+            )
 
-        val resultBuilder = StringBuilder()
-        for (res in response.responsesList) {
-            if (res.hasError()) {
-                throw IllegalArgumentException("Vision API Error: ${res.error.message}")
-            } else {
-                res.textAnnotationsList.forEach { annotation ->
-                    resultBuilder.appendLine(annotation.description)
+            val resultBuilder = StringBuilder()
+            for (res in response.responsesList) {
+                if (res.hasError()) {
+                    throw IllegalArgumentException("Vision API Error: ${res.error.message}")
+                } else {
+                    res.textAnnotationsList.forEach { annotation ->
+                        resultBuilder.appendLine(annotation.description)
+                    }
                 }
             }
+            return resultBuilder.toString()
         }
-        return resultBuilder.toString()
     }
 
     fun close() {
