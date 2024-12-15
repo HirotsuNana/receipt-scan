@@ -27,8 +27,6 @@ class ReceiptService(
         val extractedText = analyzeImageWithVisionService(tempFile.absolutePath)
         Log.info("Extracted Text: $extractedText")
 
-        Log.info("Extracted values: StoreName = $storeName, TotalPrice = $totalPrice, Date = $date")
-
         // Receiptオブジェクトを保存
         val receipt = Receipt(storeName, totalPrice, date, item)
         saveReceiptToFirestore(receipt)
@@ -37,10 +35,8 @@ class ReceiptService(
     fun saveReceiptToFirestore(receipt: Receipt) {
         val firestore: Firestore = FirestoreOptions.getDefaultInstance().service
 
-        // Firestoreのコレクションとドキュメントを指定
         val receiptCollection = firestore.collection("receipts")
 
-        // 保存するデータ（Receiptオブジェクトの内容をMapとして格納）
         val receiptData: Map<String, Any?> = hashMapOf(
             "storeName" to receipt.storeName,
             "totalPrice" to receipt.totalPrice,
@@ -48,20 +44,16 @@ class ReceiptService(
             "items" to receipt.items
         )
 
-        // 新しいドキュメントを追加
         val apiFuture: ApiFuture<DocumentReference> = receiptCollection.add(receiptData)
 
         // 非同期操作を待機してDocumentReferenceを取得
         val documentReference: DocumentReference = apiFuture.get()
-
-        // ドキュメントIDをログに表示（オプション）
-        Log.info("Document added with ID: ${documentReference.id}")
     }
 
     // 一時ファイルを作成
     private fun createTempFileFromInputStream(inputStream: InputStream): File {
         val tempFile = File.createTempFile("receipt", ".jpg")
-        tempFile.deleteOnExit() // プログラム終了時に削除
+        tempFile.deleteOnExit()
         FileOutputStream(tempFile).use { outputStream ->
             inputStream.copyTo(outputStream)
         }

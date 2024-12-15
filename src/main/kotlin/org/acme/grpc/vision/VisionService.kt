@@ -25,7 +25,6 @@ class VisionService {
             .setImage(image)
             .build()
 
-        // try-with-resources to ensure the client is closed automatically
         ImageAnnotatorClient.create().use { client ->
             val response = client.batchAnnotateImages(
                 BatchAnnotateImagesRequest.newBuilder().addRequests(request).build()

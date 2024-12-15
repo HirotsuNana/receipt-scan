@@ -51,9 +51,6 @@ class ReceiptScanResource {
             val date = receiptData["Date"] as? String
             val items = receiptData["Items"] as List<Map<String, Any>>
 
-            Log.info("Normalized Text: $normalizedText")
-            Log.info("Extracted Items: $items")
-
             Log.info("Extracted values: StoreName = $storeName, TotalPrice = $totalPrice, Items = $items")
 
             storeName?.let {
@@ -180,8 +177,36 @@ class ReceiptScanResource {
     }
 
     fun extractItems(text: String): List<String> {
-        val itemRegex = Regex("""\d{6}\s+\D+?\s+¥(\d{1,3}(?:,\d{3})*)""") // 商品コード + 商品名 + 価格
-        return itemRegex.findAll(text).map { it.value.trim() }.toList()
+        // 商品ID（6桁）、商品名、価格、数量（X点や3P）を抽出する正規表現
+        val itemRegex = Regex("""(\d{6})\s+([^\d¥]+(?:\s+[^\d¥]+)*?)\s*(¥[\d,]+(?:\.\d{1,2})?)\s*(X\d+点|3P|)?""")
+
+        val items = mutableListOf<String>()
+
+        // 正規表現でテキスト内の商品情報を抽出
+        val matches = itemRegex.findAll(text)
+
+        // 抽出した項目をリストに追加
+        for (match in matches) {
+            val itemCode = match.groupValues[1].trim()  // 商品コード
+            val itemName = match.groupValues[2].trim()  // 商品名
+            val price = match.groupValues[3].trim()  // 価格
+            val quantity = match.groupValues[4].trim()  // 数量（X2点など）
+
+            // 数量情報があれば、それを商品名に追加
+            val itemInfo = if (quantity.isNotEmpty()) {
+                "$itemCode $itemName $price $quantity"
+            } else {
+                "$itemCode $itemName $price"
+            }
+
+            items.add(itemInfo)
+        }
+
+        if (items.isEmpty()) {
+            println("No items found in the text.")
+        }
+
+        return items
     }
 
     fun extractReceiptData(text: String): Map<String, Any> {

@@ -31,10 +31,10 @@ dependencies {
     implementation 'com.google.cloud:google-cloud-storage:2.45.0'
 
     // firestore
-    implementation 'com.google.cloud:google-cloud-firestore:3.4.0'
+    implementation 'com.google.cloud:google-cloud-firestore:3.14.3'
 
     // vision AI
-    implementation 'com.google.cloud:google-cloud-vision:3.0.2'
+    implementation 'com.google.cloud:google-cloud-vision:3.15.1'
     implementation platform("com.google.cloud:libraries-bom:26.51.0")
     implementation 'com.google.protobuf:protobuf-java:4.28.2'
     implementation 'io.grpc:grpc-okhttp:1.57.2'

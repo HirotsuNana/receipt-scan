@@ -7,7 +7,7 @@ import java.io.InputStream
 class ReceiptUploadForm {
 
     @FormParam("image")
-    @PartType("application/octet-stream") // or "image/png" / "image/jpeg"
+    @PartType("application/octet-stream")
     lateinit var image: InputStream
 
     @FormParam("fileName")

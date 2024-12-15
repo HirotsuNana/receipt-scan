@@ -2,7 +2,6 @@ package org.acme.domain.repository
 
 import com.google.cloud.firestore.Firestore
 import com.google.cloud.firestore.FirestoreOptions
-import com.google.cloud.firestore.SetOptions
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Produces
 import org.acme.domain.model.Receipt
