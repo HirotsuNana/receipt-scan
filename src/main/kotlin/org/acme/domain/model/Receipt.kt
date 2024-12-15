@@ -1,14 +1,16 @@
 package org.acme.domain.model
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.quarkus.logging.Log
 
 data class Receipt(
-    val storeName: String?,
-    val totalPrice: Double?,
-    val date: String?
+    @JsonProperty("storeName") val storeName: String?,
+    @JsonProperty("totalPrice") val totalPrice: Int?,
+    @JsonProperty("date") val date: String?,
+    @JsonProperty("items") val items: List<Map<String, Any>>
 ) {
     init {
-        Log.info("Initializing Receipt: storeName=$storeName, totalPrice=$totalPrice, date=$date")
+        Log.info("Initializing Receipt: storeName=$storeName, totalPrice=$totalPrice, date=$date, item=$items")
 
         // storeName が null でない、かつ空白でないことを確認
         storeName?.let { require(it.isNotBlank()) { "Store name cannot be blank." } } ?: run {

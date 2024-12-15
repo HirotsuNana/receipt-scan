@@ -22,7 +22,8 @@ class ReceiptRepository {
         val document = mapOf(
             "storeName" to receipt.storeName,
             "totalPrice" to receipt.totalPrice,
-            "date" to receipt.date
+            "date" to receipt.date,
+            "item" to receipt.items
         )
 
         documentRef.set(document)

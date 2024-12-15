@@ -16,10 +16,13 @@ dependencies {
     implementation 'io.quarkus:quarkus-kotlin'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'io.quarkus:quarkus-arc'
-    implementation 'io.quarkus:quarkus-resteasy:3.17.3'
+    implementation 'io.quarkus:quarkus-resteasy:3.19.0'
     implementation 'io.quarkus:quarkus-resteasy-multipart:3.17.3'
     implementation 'io.quarkus:quarkus-vertx-web:3.0.0.Beta1'
     implementation 'io.quarkus:quarkus-smallrye-openapi'
+    implementation 'io.quarkus:quarkus-resteasy-jackson'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
+    implementation 'io.quarkus:quarkus-jackson'
 
     // grpc
     implementation 'io.quarkus:quarkus-grpc'

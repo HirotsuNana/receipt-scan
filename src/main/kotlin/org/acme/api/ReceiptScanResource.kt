@@ -1,48 +1,71 @@
 package org.acme.api
 
-import com.google.cloud.firestore.FirestoreOptions
 import com.google.cloud.vision.v1.AnnotateImageRequest
 import com.google.cloud.vision.v1.Feature
 import com.google.cloud.vision.v1.Image
 import com.google.cloud.vision.v1.ImageAnnotatorClient
 import com.google.protobuf.ByteString
 import io.quarkus.logging.Log
+import jakarta.inject.Inject
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
+import org.acme.application.ReceiptService
 import org.jboss.resteasy.annotations.providers.multipart.MultipartForm
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.io.InputStream
-import java.util.concurrent.CompletableFuture
 import javax.imageio.ImageIO
 
 @Path("/scan")
 class ReceiptScanResource {
 
+    @Inject
+    lateinit var receiptService: ReceiptService
+
     @POST
     @Consumes("multipart/form-data")
+    @Produces(MediaType.APPLICATION_JSON)
     fun scanReceipt(@MultipartForm form: ReceiptUploadForm): Response {
         val file: InputStream = form.image
-        try {
-            val imageBytes = file.readBytes() // ストリームをバイト配列に変換
-            Log.info("Image size: ${imageBytes.size} bytes") // デバッグログを追加
+        return try {
+            val imageBytes = file.readBytes()
+            Log.info("Image size: ${imageBytes.size} bytes")
+
             if (!isValidImage(ByteArrayInputStream(imageBytes))) {
                 Log.error("No image file provided or the file is empty.")
                 return createBadRequestResponse("No image file provided or the file is empty.")
             }
 
             val extractedText = extractTextFromImage(ByteArrayInputStream(imageBytes))
-            Log.info("Extracted text: $extractedText")
+            val normalizedText = normalizeText(extractedText)
 
-            saveTextToFirestore(extractedText)
-            return Response.ok("Text extracted and saved successfully.").build()
+            val receiptData = extractReceiptData(normalizedText)
+
+            val storeName = receiptData["StoreName"] as? String
+            val totalPrice = receiptData["TotalPrice"] as? Int
+            val date = receiptData["Date"] as? String
+            val items = receiptData["Items"] as List<Map<String, Any>>
+
+            Log.info("Normalized Text: $normalizedText")
+            Log.info("Extracted Items: $items")
+
+            Log.info("Extracted values: StoreName = $storeName, TotalPrice = $totalPrice, Items = $items")
+
+            storeName?.let {
+                receiptService.processReceipt(ByteArrayInputStream(imageBytes), it, totalPrice, date, items)
+                return Response.ok("Receipt processed successfully").build()
+            }
+
+            Log.error("Store name not found.")
+            createBadRequestResponse("Store name not found.")
         } catch (e: Exception) {
             Log.error("Error during receipt scanning: ${e.message}")
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+            Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity("Failed to process image: ${e.message}")
                 .build()
         }
@@ -95,29 +118,10 @@ class ReceiptScanResource {
         }
     }
 
-    private fun saveTextToFirestore(text: String) {
-        val firestore = FirestoreOptions.getDefaultInstance().service
-        val collectionRef = firestore.collection("receipts")
-        val document = mapOf("extractedText" to text)
-
-        CompletableFuture.runAsync {
-            try {
-                // 非同期処理を待機するように変更
-                collectionRef.add(document).get()
-                Log.info("Data saved to Firestore successfully.")
-            } catch (e: Exception) {
-                Log.error("Error saving data to Firestore: ${e.message}")
-                throw RuntimeException("Failed to save data to Firestore: ${e.message}")
-            }
-        }.join()
-    }
-
     private fun resizeImage(originalImageBytes: ByteString): ByteString {
         try {
             val image = ImageIO.read(ByteArrayInputStream(originalImageBytes.toByteArray()))
-            if (image == null) {
-                throw RuntimeException("Failed to decode image.")
-            }
+                ?: throw RuntimeException("Failed to decode image.")
 
             val maxDimension = 1024
             val scale = maxOf(image.width, image.height) / maxDimension.toFloat()
@@ -133,12 +137,73 @@ class ReceiptScanResource {
             ImageIO.write(resizedImage, "PNG", byteArrayOutputStream)
             val resizedImageBytes = ByteString.copyFrom(byteArrayOutputStream.toByteArray())
 
-            // デバッグログを追加
             Log.info("Resized image size: ${resizedImageBytes.size()} bytes")
             return resizedImageBytes
         } catch (e: Exception) {
             Log.error("Error resizing image: ${e.message}")
             throw RuntimeException("Failed to resize image: ${e.message}")
         }
+    }
+
+    // 合計金額を抽出する
+    fun extractTotalPrice(text: String): Int? {
+        // 合計金額を抽出する正規表現
+        val priceRegex = Regex("合計\\s*¥?(\\d{1,3}(?:,\\d{3})*)")
+        val matchResult = priceRegex.find(text)
+
+        if (matchResult != null) {
+            Log.info("Total price found: ${matchResult.groups[1]?.value}")
+        } else {
+            Log.info("No total price found.")
+        }
+
+        val rawPrice = matchResult?.groups?.get(1)?.value?.replace(",", "") // カンマを削除
+        Log.info("Extracted raw price string: $rawPrice")
+
+        return rawPrice?.toIntOrNull()
+    }
+
+    // 日付を抽出する
+    fun extractDate(text: String): String? {
+        val dateRegex = Regex("\\d{4}年\\d{2}月\\d{2}日")  // 日付を抽出する正規表現
+        val matchResult = dateRegex.find(text)
+        return matchResult?.value?.trim()
+    }
+
+    fun convertToStandardDateFormat(date: String): String {
+        // 例: "2024年12月07日" -> "2024-12-07"
+        val regex = Regex("(\\d{4})年(\\d{2})月(\\d{2})日")
+        return regex.replace(date) { matchResult ->
+            "${matchResult.groupValues[1]}-${matchResult.groupValues[2]}-${matchResult.groupValues[3]}"
+        }
+    }
+
+    fun extractItems(text: String): List<String> {
+        val itemRegex = Regex("""\d{6}\s+\D+?\s+¥(\d{1,3}(?:,\d{3})*)""") // 商品コード + 商品名 + 価格
+        return itemRegex.findAll(text).map { it.value.trim() }.toList()
+    }
+
+    fun extractReceiptData(text: String): Map<String, Any> {
+        val storeName = Regex("""いせやフーズクラブ""").find(text)?.value ?: "Unknown Store"
+        val totalPrice = extractTotalPrice(text) ?: 0
+        val items = extractItems(text)
+        val date = extractDate(text)?.let { convertToStandardDateFormat(it) } ?: "Unknown Date"
+
+        return mapOf(
+            "StoreName" to storeName,
+            "TotalPrice" to totalPrice,
+            "Items" to items,
+            "Date" to date
+        )
+    }
+
+    fun normalizeText(text: String): String {
+        return text
+            .replace(Regex("\\s+"), " ") // 複数の空白を1つにまとめる
+            .replace(Regex("¥\\s*"), "¥") // ¥の後の余分な空白を削除
+            .replace(Regex("X\\s*"), "X") // Xの後の余分な空白を削除
+            .replace(",", "") // カンマを削除
+            .replace("点 ", "点:") // 数量のマーカーを追加
+            .trim() // 前後の空白を削除
     }
 }
