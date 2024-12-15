@@ -148,7 +148,7 @@ class ReceiptScanResource {
     // 合計金額を抽出する
     fun extractTotalPrice(text: String): Int? {
         // 合計金額を抽出する正規表現
-        val priceRegex = Regex("合計\\s*¥?(\\d{1,3}(?:,\\d{3})*)")
+        val priceRegex = Regex("合計\\s*¥?\\s*(\\d{1,3}(?:[ ,]\\d{3})*)")
         val matchResult = priceRegex.find(text)
 
         if (matchResult != null) {
@@ -157,7 +157,8 @@ class ReceiptScanResource {
             Log.info("No total price found.")
         }
 
-        val rawPrice = matchResult?.groups?.get(1)?.value?.replace(",", "") // カンマを削除
+        // 抽出した金額からスペースやカンマを削除
+        val rawPrice = matchResult?.groups?.get(1)?.value?.replace("[ ,]".toRegex(), "")
         Log.info("Extracted raw price string: $rawPrice")
 
         return rawPrice?.toIntOrNull()
