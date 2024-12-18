@@ -1,55 +1,39 @@
 package org.acme.application
 
-import com.google.api.core.ApiFuture
-import com.google.cloud.firestore.DocumentReference
-import com.google.cloud.firestore.Firestore
-import com.google.cloud.firestore.FirestoreOptions
 import io.quarkus.logging.Log
 import jakarta.enterprise.context.ApplicationScoped
 import org.acme.domain.model.Receipt
+import org.acme.domain.repository.ReceiptRepository
 import org.acme.domain.service.ReceiptDataExtractor
 import java.io.InputStream
 
 @ApplicationScoped
 class ReceiptService(
-    private val receiptDataExtractor: ReceiptDataExtractor
+    private val receiptDataExtractor: ReceiptDataExtractor,
+    private val receiptRepository: ReceiptRepository // ReceiptRepositoryを注入
 ) {
     fun processReceipt(imageStream: InputStream): Receipt {
         Log.info("Starting receipt processing")
 
         // 画像の検証とOCR解析
-        val extractedText = receiptDataExtractor.extractTextFromImage(imageStream)  // Corrected here
+        val extractedText = receiptDataExtractor.extractTextFromImage(imageStream)
         val normalizedText = receiptDataExtractor.normalizeText(extractedText)
 
         // レシートデータの抽出
         val receiptData = receiptDataExtractor.extractReceiptData(normalizedText)
-        val storeName = receiptData["StoreName"]
-        val totalPrice = receiptData["TotalPrice"]
-        val date = receiptData["Date"]
+        val storeName = receiptData["StoreName"].toString()
+        val totalPrice = receiptData["TotalPrice"] as Int
+        val date = receiptData["Date"].toString()
         val items = receiptData["Items"] as? List<Map<String, Any>> ?: emptyList()
 
+        val receipt = Receipt(storeName, totalPrice, date, items)
 
-        // Receiptオブジェクトを保存
-        val receipt = Receipt(storeName.toString(), totalPrice, date.toString(), items)
-        saveReceiptToFirestore(receipt)
+        saveReceiptToRepository(receipt)
 
         return receipt
     }
 
-    private fun saveReceiptToFirestore(receipt: Receipt) {
-        val firestore: Firestore = FirestoreOptions.getDefaultInstance().service
-        val receiptCollection = firestore.collection("receipts")
-
-        val receiptData: Map<String, Any?> = hashMapOf(
-            "storeName" to receipt.storeName,
-            "totalPrice" to receipt.totalPrice,
-            "date" to receipt.date,
-            "items" to receipt.items
-        )
-
-        val apiFuture: ApiFuture<DocumentReference> = receiptCollection.add(receiptData)
-
-        // 非同期操作を待機してDocumentReferenceを取得
-        val documentReference: DocumentReference = apiFuture.get()
+    private fun saveReceiptToRepository(receipt: Receipt) {
+        receiptRepository.save(receipt)
     }
 }
