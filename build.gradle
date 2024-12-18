@@ -13,36 +13,18 @@ repositories {
 dependencies {
 
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
-    implementation 'io.quarkus:quarkus-kotlin'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    implementation 'io.quarkus:quarkus-arc'
     implementation 'io.quarkus:quarkus-resteasy:3.19.0'
     implementation 'io.quarkus:quarkus-resteasy-multipart:3.17.3'
-    implementation 'io.quarkus:quarkus-vertx-web:3.0.0.Beta1'
-    implementation 'io.quarkus:quarkus-smallrye-openapi'
     implementation 'io.quarkus:quarkus-resteasy-jackson'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
-    implementation 'io.quarkus:quarkus-jackson'
 
     // grpc
-    implementation 'io.quarkus:quarkus-grpc'
-
-    // cloud storage
-    implementation 'com.google.cloud:google-cloud-storage:2.45.0'
+    implementation 'com.google.protobuf:protobuf-java:4.28.2'
 
     // firestore
-    implementation 'com.google.cloud:google-cloud-firestore:3.14.3'
+    implementation 'com.google.cloud:google-cloud-firestore:3.20.2'
 
     // vision AI
-    implementation 'com.google.cloud:google-cloud-vision:3.15.1'
-    implementation platform("com.google.cloud:libraries-bom:26.51.0")
-    implementation 'com.google.protobuf:protobuf-java:4.28.2'
-    implementation 'io.grpc:grpc-okhttp:1.57.2'
-    implementation 'io.grpc:grpc-netty-shaded:1.57.2'
-
-    // test
-    testImplementation 'io.quarkus:quarkus-junit5'
-    testImplementation 'io.rest-assured:rest-assured'
+    implementation 'com.google.cloud:google-cloud-vision:3.35.0'
 
 }
 
@@ -54,9 +36,6 @@ java {
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-test {
-    systemProperty "java.util.logging.manager", "org.jboss.logmanager.LogManager"
-}
 allOpen {
     annotation("jakarta.ws.rs.Path")
     annotation("jakarta.enterprise.context.ApplicationScoped")
