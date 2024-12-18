@@ -7,34 +7,37 @@ import com.google.cloud.firestore.FirestoreOptions
 import io.quarkus.logging.Log
 import jakarta.enterprise.context.ApplicationScoped
 import org.acme.domain.model.Receipt
-import org.acme.domain.repository.ReceiptRepository
-import org.acme.grpc.vision.VisionService
-import java.io.File
-import java.io.FileOutputStream
+import org.acme.domain.service.ReceiptDataExtractor
 import java.io.InputStream
 
 @ApplicationScoped
 class ReceiptService(
-    private val receiptRepository: ReceiptRepository,
-    private val visionService: VisionService
+    private val receiptDataExtractor: ReceiptDataExtractor
 ) {
-    fun processReceipt(imageStream: InputStream, storeName: String, totalPrice: Int?, date: String?, item: List<Map<String, Any>>) {
+    fun processReceipt(imageStream: InputStream): Receipt {
         Log.info("Starting receipt processing")
 
-        val tempFile = createTempFileFromInputStream(imageStream)
+        // 画像の検証とOCR解析
+        val extractedText = receiptDataExtractor.extractTextFromImage(imageStream)  // Corrected here
+        val normalizedText = receiptDataExtractor.normalizeText(extractedText)
 
-        // OCRで画像からテキストを抽出
-        val extractedText = analyzeImageWithVisionService(tempFile.absolutePath)
-        Log.info("Extracted Text: $extractedText")
+        // レシートデータの抽出
+        val receiptData = receiptDataExtractor.extractReceiptData(normalizedText)
+        val storeName = receiptData["StoreName"]
+        val totalPrice = receiptData["TotalPrice"]
+        val date = receiptData["Date"]
+        val items = receiptData["Items"] as? List<Map<String, Any>> ?: emptyList()
+
 
         // Receiptオブジェクトを保存
-        val receipt = Receipt(storeName, totalPrice, date, item)
+        val receipt = Receipt(storeName.toString(), totalPrice, date.toString(), items)
         saveReceiptToFirestore(receipt)
+
+        return receipt
     }
 
-    fun saveReceiptToFirestore(receipt: Receipt) {
+    private fun saveReceiptToFirestore(receipt: Receipt) {
         val firestore: Firestore = FirestoreOptions.getDefaultInstance().service
-
         val receiptCollection = firestore.collection("receipts")
 
         val receiptData: Map<String, Any?> = hashMapOf(
@@ -48,24 +51,5 @@ class ReceiptService(
 
         // 非同期操作を待機してDocumentReferenceを取得
         val documentReference: DocumentReference = apiFuture.get()
-    }
-
-    // 一時ファイルを作成
-    private fun createTempFileFromInputStream(inputStream: InputStream): File {
-        val tempFile = File.createTempFile("receipt", ".jpg")
-        tempFile.deleteOnExit()
-        FileOutputStream(tempFile).use { outputStream ->
-            inputStream.copyTo(outputStream)
-        }
-        return tempFile
-    }
-
-    private fun analyzeImageWithVisionService(imagePath: String): String {
-        return try {
-            visionService.analyzeImage(imagePath)
-        } catch (e: Exception) {
-            Log.error("Failed to analyze image: ${e.message}", e)
-            throw IllegalArgumentException("Failed to analyze the receipt image.")
-        }
     }
 }
