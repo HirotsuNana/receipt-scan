@@ -53,13 +53,13 @@ class ReceiptScanResource {
 
             Log.info("Extracted values: StoreName = $storeName, TotalPrice = $totalPrice, Items = $items")
 
-            storeName?.let {
-                receiptService.processReceipt(ByteArrayInputStream(imageBytes), it, totalPrice, date, items)
-                return Response.ok("Receipt processed successfully").build()
+            if (storeName.isNullOrBlank() || totalPrice == null || date.isNullOrBlank()) {
+                Log.error("Missing required data: StoreName = $storeName, TotalPrice = $totalPrice, Date = $date")
+                return createBadRequestResponse("Store name, total price, or date is missing.")
             }
 
-            Log.error("Store name not found.")
-            createBadRequestResponse("Store name not found.")
+            receiptService.processReceipt(ByteArrayInputStream(imageBytes), storeName, totalPrice, date, items)
+            return Response.ok("Receipt processed successfully").build()
         } catch (e: Exception) {
             Log.error("Error during receipt scanning: ${e.message}")
             Response.status(Response.Status.INTERNAL_SERVER_ERROR)
